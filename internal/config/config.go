@@ -1,0 +1,387 @@
+package config
+
+import (
+	"fmt"
+	"log/slog"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+// Config holds all application configuration
+type Config struct {
+	// Server configuration
+	Host            string `env:"HOST" default:"127.0.0.1"`
+	Port            string `env:"PORT" default:"16191"`
+	ShutdownTimeout int    `env:"SHUTDOWN_TIMEOUT" default:"30"`
+
+	// Storage configuration
+	StorageType string `env:"STORAGE_TYPE" default:"file"`
+	DataDir     string `env:"DATA_DIR"`
+
+	// Database configuration (PostgreSQL)
+	DatabaseHost     string `env:"DB_HOST" default:"localhost"`
+	DatabasePort     string `env:"DB_PORT" default:"5432"`
+	DatabaseName     string `env:"DB_NAME" default:"projectflow"`
+	DatabaseUser     string `env:"DB_USER" default:"projectflow"`
+	DatabasePassword string `env:"DB_PASSWORD" default:""`
+	DatabaseSSLMode  string `env:"DB_SSL_MODE" default:"prefer"`
+
+	// Logging configuration
+	LogLevel  string `env:"LOG_LEVEL" default:"INFO"`
+	LogFormat string `env:"LOG_FORMAT" default:"text"`
+
+	// LLM configuration
+	LLMProvider  string `env:"LLM_PROVIDER" default:"disabled"`
+	LLMAPIKey    string `env:"LLM_API_KEY" default:""`
+	LLMBaseURL   string `env:"LLM_BASE_URL" default:""`
+	LLMModel     string `env:"LLM_MODEL" default:"llama3.2"`
+	LLMTimeout   int    `env:"LLM_TIMEOUT" default:"60"`
+	LLMMaxTokens int    `env:"LLM_MAX_TOKENS" default:"1000"`
+}
+
+// Load loads configuration from environment variables with validation
+func Load() (*Config, error) {
+	config := &Config{
+		Host:             getEnv("HOST", "127.0.0.1"),
+		Port:             getEnv("PORT", "16191"),
+		ShutdownTimeout:  getEnvInt("SHUTDOWN_TIMEOUT", 30),
+		StorageType:      getEnv("STORAGE_TYPE", "file"),
+		DataDir:          getEnv("DATA_DIR", DefaultDataDir()),
+		DatabaseHost:     getEnv("DB_HOST", "localhost"),
+		DatabasePort:     getEnv("DB_PORT", "5432"),
+		DatabaseName:     getEnv("DB_NAME", "projectflow"),
+		DatabaseUser:     getEnv("DB_USER", "projectflow"),
+		DatabasePassword: getEnv("DB_PASSWORD", ""),
+		DatabaseSSLMode:  getEnv("DB_SSL_MODE", "prefer"),
+		LogLevel:         getEnv("LOG_LEVEL", "INFO"),
+		LogFormat:        getEnv("LOG_FORMAT", "text"),
+		LLMProvider:      getEnv("LLM_PROVIDER", "disabled"),
+		LLMAPIKey:        getEnv("LLM_API_KEY", ""),
+		LLMBaseURL:       getEnv("LLM_BASE_URL", ""),
+		LLMModel:         getEnv("LLM_MODEL", "llama3.2"),
+		LLMTimeout:       getEnvInt("LLM_TIMEOUT", 60),
+		LLMMaxTokens:     getEnvInt("LLM_MAX_TOKENS", 1000),
+	}
+
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	return config, nil
+}
+
+// Validate validates the configuration values
+func (c *Config) Validate() error {
+	if c.Host == "" {
+		return fmt.Errorf("HOST cannot be empty")
+	}
+
+	// Validate port
+	if c.Port == "" {
+		return fmt.Errorf("PORT cannot be empty")
+	}
+	if port, err := strconv.Atoi(c.Port); err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("PORT must be a valid port number (1-65535), got: %s", c.Port)
+	}
+
+	// Validate shutdown timeout
+	if c.ShutdownTimeout < 0 {
+		return fmt.Errorf("SHUTDOWN_TIMEOUT must be non-negative, got: %d", c.ShutdownTimeout)
+	}
+	if c.ShutdownTimeout > 300 {
+		return fmt.Errorf("SHUTDOWN_TIMEOUT should not exceed 300 seconds, got: %d", c.ShutdownTimeout)
+	}
+
+	// Validate data directory
+	if c.DataDir == "" {
+		return fmt.Errorf("DATA_DIR cannot be empty")
+	}
+
+	// Validate storage type
+	validStorageTypes := []string{"file", "postgres", "postgresql"}
+	storageType := strings.ToLower(c.StorageType)
+	var validStorage bool
+	for _, sType := range validStorageTypes {
+		if storageType == sType {
+			validStorage = true
+			break
+		}
+	}
+	if !validStorage {
+		return fmt.Errorf("STORAGE_TYPE must be one of %v, got: %s", validStorageTypes, c.StorageType)
+	}
+
+	// Validate database configuration if using database storage
+	if storageType == "postgres" || storageType == "postgresql" {
+		if c.DatabaseHost == "" {
+			return fmt.Errorf("DB_HOST cannot be empty when using database storage")
+		}
+		if c.DatabasePort == "" {
+			return fmt.Errorf("DB_PORT cannot be empty when using database storage")
+		}
+		if port, err := strconv.Atoi(c.DatabasePort); err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("DB_PORT must be a valid port number (1-65535), got: %s", c.DatabasePort)
+		}
+		if c.DatabaseName == "" {
+			return fmt.Errorf("DB_NAME cannot be empty when using database storage")
+		}
+		if c.DatabaseUser == "" {
+			return fmt.Errorf("DB_USER cannot be empty when using database storage")
+		}
+		// Password can be empty for trust authentication or .pgpass
+		validSSLModes := []string{"disable", "require", "verify-ca", "verify-full", "prefer", "allow"}
+		var validSSL bool
+		for _, mode := range validSSLModes {
+			if c.DatabaseSSLMode == mode {
+				validSSL = true
+				break
+			}
+		}
+		if !validSSL {
+			return fmt.Errorf("DB_SSL_MODE must be one of %v, got: %s", validSSLModes, c.DatabaseSSLMode)
+		}
+	}
+
+	// Validate log level
+	validLogLevels := []string{"DEBUG", "INFO", "WARN", "ERROR"}
+	logLevel := strings.ToUpper(c.LogLevel)
+	var validLevel bool
+	for _, level := range validLogLevels {
+		if logLevel == level {
+			validLevel = true
+			break
+		}
+	}
+	if !validLevel {
+		return fmt.Errorf("LOG_LEVEL must be one of %v, got: %s", validLogLevels, c.LogLevel)
+	}
+
+	// Validate log format
+	validLogFormats := []string{"json", "text"}
+	logFormat := strings.ToLower(c.LogFormat)
+	var validFormat bool
+	for _, format := range validLogFormats {
+		if logFormat == format {
+			validFormat = true
+			break
+		}
+	}
+	if !validFormat {
+		return fmt.Errorf("LOG_FORMAT must be one of %v, got: %s", validLogFormats, c.LogFormat)
+	}
+
+	// Validate LLM configuration
+	validLLMProviders := []string{"groq", "ollama", "openai", "disabled"}
+	llmProvider := strings.ToLower(c.LLMProvider)
+	var validProvider bool
+	for _, provider := range validLLMProviders {
+		if llmProvider == provider {
+			validProvider = true
+			break
+		}
+	}
+	if !validProvider {
+		return fmt.Errorf("LLM_PROVIDER must be one of %v, got: %s", validLLMProviders, c.LLMProvider)
+	}
+
+	// Validate LLM API key requirement (except for disabled)
+	if llmProvider != "disabled" && llmProvider != "ollama" && c.LLMAPIKey == "" {
+		return fmt.Errorf("LLM_API_KEY is required when LLM_PROVIDER is %s", c.LLMProvider)
+	}
+
+	// Validate LLM timeout
+	if c.LLMTimeout < 1 || c.LLMTimeout > 300 {
+		return fmt.Errorf("LLM_TIMEOUT must be between 1 and 300 seconds, got: %d", c.LLMTimeout)
+	}
+
+	// Validate LLM max tokens
+	if c.LLMMaxTokens < 1 || c.LLMMaxTokens > 10000 {
+		return fmt.Errorf("LLM_MAX_TOKENS must be between 1 and 10000, got: %d", c.LLMMaxTokens)
+	}
+
+	// Perform provider-specific validation
+	if err := c.ValidateOllamaConfiguration(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LogConfiguration logs the current configuration (without sensitive data)
+func (c *Config) LogConfiguration() {
+	slog.Info("Application configuration loaded",
+		"host", c.Host,
+		"port", c.Port,
+		"shutdown_timeout_seconds", c.ShutdownTimeout,
+		"storage_type", c.StorageType,
+		"data_dir", c.DataDir,
+		"db_host", c.DatabaseHost,
+		"db_port", c.DatabasePort,
+		"db_name", c.DatabaseName,
+		"db_user", c.DatabaseUser,
+		"db_ssl_mode", c.DatabaseSSLMode,
+		"log_level", c.LogLevel,
+		"log_format", c.LogFormat,
+		"llm_provider", c.LLMProvider,
+		"llm_model", c.LLMModel,
+		"llm_timeout", c.LLMTimeout,
+		"llm_max_tokens", c.LLMMaxTokens,
+		"llm_api_key_configured", c.LLMAPIKey != "",
+	)
+}
+
+// DefaultDataDir returns a stable per-user directory for local project data.
+func DefaultDataDir() string {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil || userConfigDir == "" {
+		return "./data"
+	}
+	return filepath.Join(userConfigDir, "projectflow", "data")
+}
+
+// GetAddress returns the HTTP listen address.
+func (c *Config) GetAddress() string {
+	return net.JoinHostPort(c.Host, c.Port)
+}
+
+// GetPort returns the port as an integer
+func (c *Config) GetPort() int {
+	port, _ := strconv.Atoi(c.Port) // Already validated in Validate()
+	return port
+}
+
+// GetLogLevel returns the log level as slog.Level
+func (c *Config) GetLogLevel() slog.Level {
+	switch strings.ToUpper(c.LogLevel) {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo // Default fallback
+	}
+}
+
+// GetLogFormat returns whether to use JSON format
+func (c *Config) GetLogFormat() string {
+	return strings.ToLower(c.LogFormat)
+}
+
+// GetStorageType returns the normalized storage type
+func (c *Config) GetStorageType() string {
+	storageType := strings.ToLower(c.StorageType)
+	if storageType == "postgresql" {
+		return "postgres"
+	}
+	return storageType
+}
+
+// GetDatabasePort returns the database port as an integer
+func (c *Config) GetDatabasePort() int {
+	port, _ := strconv.Atoi(c.DatabasePort) // Already validated in Validate()
+	return port
+}
+
+// GetDatabaseConnectionString builds a PostgreSQL connection string
+func (c *Config) GetDatabaseConnectionString() string {
+	var parts []string
+
+	parts = append(parts, fmt.Sprintf("host=%s", c.DatabaseHost))
+	parts = append(parts, fmt.Sprintf("port=%s", c.DatabasePort))
+	parts = append(parts, fmt.Sprintf("dbname=%s", c.DatabaseName))
+	parts = append(parts, fmt.Sprintf("user=%s", c.DatabaseUser))
+
+	if c.DatabasePassword != "" {
+		parts = append(parts, fmt.Sprintf("password=%s", c.DatabasePassword))
+	}
+
+	parts = append(parts, fmt.Sprintf("sslmode=%s", c.DatabaseSSLMode))
+
+	return strings.Join(parts, " ")
+}
+
+// GetLLMProvider returns the normalized LLM provider name
+func (c *Config) GetLLMProvider() string {
+	return strings.ToLower(c.LLMProvider)
+}
+
+// IsLLMEnabled returns true if LLM integration is enabled
+func (c *Config) IsLLMEnabled() bool {
+	return c.GetLLMProvider() != "disabled"
+}
+
+// GetLLMTimeout returns the LLM timeout as a time.Duration
+func (c *Config) GetLLMTimeoutDuration() int {
+	return c.LLMTimeout
+}
+
+// GetOllamaBaseURL returns the Ollama base URL, defaulting if not set
+func (c *Config) GetOllamaBaseURL() string {
+	if c.LLMBaseURL != "" {
+		return c.LLMBaseURL
+	}
+	return "http://localhost:11434" // Default Ollama URL
+}
+
+// IsOllamaProvider returns true if the current LLM provider is Ollama
+func (c *Config) IsOllamaProvider() bool {
+	return c.GetLLMProvider() == "ollama"
+}
+
+// ValidateOllamaConfiguration performs Ollama-specific validation
+func (c *Config) ValidateOllamaConfiguration() error {
+	if !c.IsOllamaProvider() {
+		return nil // Skip validation if not using Ollama
+	}
+
+	// Validate base URL format for Ollama
+	baseURL := c.GetOllamaBaseURL()
+	if baseURL == "" {
+		return fmt.Errorf("LLM_BASE_URL cannot be empty when using Ollama provider")
+	}
+
+	// Basic URL validation - ensure it looks like a URL
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		return fmt.Errorf("LLM_BASE_URL must be a valid HTTP/HTTPS URL when using Ollama, got: %s", baseURL)
+	}
+
+	// Validate model name for Ollama (should not be empty)
+	if c.LLMModel == "" {
+		return fmt.Errorf("LLM_MODEL cannot be empty when using Ollama provider")
+	}
+
+	// Recommend longer timeout for Ollama
+	if c.LLMTimeout < 30 {
+		// This is just a warning in logs, not an error
+		slog.Warn("LLM_TIMEOUT is quite short for Ollama (local inference can be slow)",
+			"current_timeout", c.LLMTimeout,
+			"recommended_minimum", 30)
+	}
+
+	return nil
+}
+
+// getEnv returns environment variable value or default
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt returns environment variable as integer or default
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}

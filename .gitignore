@@ -1,0 +1,10 @@
+.DS_Store
+.github/copilot-instructions.md
+ideation.md
+data/*
+bin/*
+build/*
+server
+/projectflow
+/projectflow-mcp
+/dist/

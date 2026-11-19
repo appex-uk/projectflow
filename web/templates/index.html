@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <script>
+        const savedWdsTheme = localStorage.getItem('wds-theme');
+        if (savedWdsTheme) {
+            document.documentElement.setAttribute('data-wds-theme', savedWdsTheme);
+            document.documentElement.setAttribute('data-theme', savedWdsTheme);
+        }
+    </script>
+    <link rel="stylesheet" href="/wds/wds.css">
+    <script type="module" src="/wds/wds.js"></script>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <link rel="stylesheet" href="/static/css/product.css">
+</head>
+<body>
+    <div class="wds-app-shell" id="projectflow-shell">
+        <aside class="wds-sidenav" aria-label="Project navigation">
+            <div class="workspace-brand">
+                <div class="workspace-brand-mark" aria-hidden="true">P</div>
+                <div>
+                    <div class="workspace-brand-name">ProjectFlow</div>
+                    <div class="workspace-brand-meta">Local workspace</div>
+                </div>
+            </div>
+
+            <div class="workspace-project">
+                <div class="wds-sidenav-group-label">Current project</div>
+                <div class="project-selector-wrapper">
+                    <button type="button" id="project-selector-btn" class="wds-btn wds-btn--secondary project-selector-btn" data-wds-tooltip="Switch project" data-wds-tooltip-placement="bottom">
+                        <wds-icon id="project-selector-icon" name="folder" size="16"></wds-icon>
+                        <span id="project-selector-text">Select Project</span>
+                        <wds-icon class="dropdown-arrow" name="chevron-down" size="14"></wds-icon>
+                    </button>
+                    <div id="project-dropdown" class="project-dropdown" style="display: none;">
+                        <div class="project-dropdown-header">
+                            <div class="project-dropdown-title">Switch project</div>
+                        </div>
+                        <div id="project-list" class="project-list"></div>
+                        <div class="project-dropdown-footer">
+                            <button id="create-project-btn" class="wds-btn wds-btn--primary wds-btn--sm wds-btn--full" type="button">
+                                <wds-icon name="plus" size="14"></wds-icon>
+                                New project
+                            </button>
+                            <button id="manage-projects-btn" class="wds-btn wds-btn--secondary wds-btn--sm wds-btn--full" type="button">
+                                <wds-icon name="settings" size="14"></wds-icon>
+                                Manage
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="workspace-views" aria-label="Project views">
+                <div class="wds-sidenav-group-label">Workspace</div>
+                <button id="kanban-view-btn" class="wds-sidenav-link view-btn active" type="button">
+                    <wds-icon name="menu" size="16"></wds-icon>
+                    Board
+                </button>
+                <button id="hierarchy-view-btn" class="wds-sidenav-link view-btn" type="button">
+                    <wds-icon name="folder" size="16"></wds-icon>
+                    Work breakdown
+                </button>
+                <button id="timeline-view-btn" class="wds-sidenav-link view-btn" type="button">
+                    <wds-icon name="file" size="16"></wds-icon>
+                    Timeline
+                </button>
+            </nav>
+
+            <div class="workspace-sidebar-footer">
+                <span class="wds-badge wds-badge--success">Local &amp; private</span>
+                <span class="workspace-sidebar-copy">Your data stays on this computer.</span>
+            </div>
+        </aside>
+
+        <nav class="wds-navbar workspace-navbar">
+            <button class="wds-sidenav-toggle wds-btn wds-btn--ghost wds-btn--icon" data-wds-nav-toggle type="button" aria-label="Toggle navigation">
+                <wds-icon name="menu"></wds-icon>
+            </button>
+            <div class="workspace-context">
+                <div class="workspace-context-label">Project workspace</div>
+                <div id="current-project-display" class="workspace-context-project">No Project Selected</div>
+            </div>
+            <div class="wds-navbar-spacer"></div>
+            <button id="chat-toggle-btn" class="wds-btn wds-btn--ghost wds-btn--icon" type="button" aria-label="Open chat assistant" data-wds-tooltip="Chat assistant" data-wds-tooltip-placement="bottom">
+                <wds-icon name="file" size="17"></wds-icon>
+            </button>
+            <button id="header-menu-btn" class="wds-btn wds-btn--ghost wds-btn--icon" type="button" aria-label="Open workspace menu" aria-expanded="false" data-wds-tooltip="Workspace menu" data-wds-tooltip-placement="bottom">
+                <wds-icon name="settings" size="17"></wds-icon>
+            </button>
+            <div id="header-menu" class="header-menu" style="display: none;">
+                <div class="header-menu-section">
+                    <div class="header-menu-heading">Help &amp; preferences</div>
+                    <button id="docs-btn" class="header-menu-item" type="button">
+                        <wds-icon name="info" size="16"></wds-icon>
+                        <span class="label">Documentation</span>
+                        <wds-icon name="chevron-right" size="14"></wds-icon>
+                    </button>
+                    <button id="theme-toggle" class="theme-toggle" type="button">
+                        <span id="theme-icon"><wds-icon name="settings" size="16"></wds-icon></span>
+                        <span class="theme-label">Toggle theme</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="wds-app-main workspace-main">
+            <div class="workspace-page">
+                <header class="workspace-page-header">
+                    <div>
+                        <div class="workspace-eyebrow">ProjectFlow workspace</div>
+                        <h1>Plan the work. Keep momentum.</h1>
+                        <p>A focused project workspace with a complete audit trail for people and AI agents.</p>
+                    </div>
+                    <div class="workspace-page-actions">
+                        <button id="filter-toggle-btn" class="wds-btn wds-btn--secondary" type="button" data-wds-tooltip="Toggle filters (F)" data-wds-tooltip-placement="bottom">
+                            <wds-icon name="filter" size="16"></wds-icon>
+                            Filters
+                        </button>
+                        <wds-menu-button id="new-task-menu" label="Create task">
+                            <button id="new-task-btn" slot="trigger" class="wds-btn wds-btn--primary" type="button" aria-haspopup="menu" data-wds-tooltip="Create an epic, story, or task" data-wds-tooltip-placement="bottom">
+                                <wds-icon name="plus" size="16"></wds-icon>
+                                New task
+                                <wds-icon name="chevron-down" size="14"></wds-icon>
+                            </button>
+                            <wds-menu-item value="epic"><wds-icon name="folder" size="15"></wds-icon>Epic</wds-menu-item>
+                            <wds-menu-item value="story"><wds-icon name="file" size="15"></wds-icon>Story</wds-menu-item>
+                            <wds-menu-item value="task"><wds-icon name="check-circle" size="15"></wds-icon>Task</wds-menu-item>
+                        </wds-menu-button>
+                    </div>
+                </header>
+
+                <!-- Advanced Filtering Panel -->
+                <div id="filter-panel" class="filter-panel" style="display: none;">
+                    <div class="filter-content wds-card">
+                        <div class="filter-heading">
+                            <div>
+                                <h3>Filter your project</h3>
+                                <p>Combine search, status, priority, type, and due date.</p>
+                            </div>
+                            <button class="wds-btn wds-btn--ghost wds-btn--icon wds-btn--sm" type="button" data-wds-tooltip="Filtering help" onclick="ProjectFlowHelp.openDoc('user-guide'); event.stopPropagation();" aria-label="Filtering help">
+                                <wds-icon name="info" size="15"></wds-icon>
+                            </button>
+                        </div>
+                
+                <!-- Active Filters Display -->
+                <div id="active-filters-container" class="active-filters" style="display: none;">
+                    <div id="active-filters-list"></div>
+                </div>
+                
+                <div class="filter-grid">
+                    <div class="filter-group wds-field">
+                        <label class="wds-label" for="filter-search">Search</label>
+                        <input class="wds-input" type="text" id="filter-search" placeholder="Search tasks..." />
+                    </div>
+                    <div class="filter-group wds-field">
+                        <label class="wds-label" for="filter-status">Status</label>
+                        <select class="wds-select" id="filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="done">Done</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                    </div>
+                    <div class="filter-group wds-field">
+                        <label class="wds-label" for="filter-priority">Priority</label>
+                        <select class="wds-select" id="filter-priority">
+                            <option value="">All Priorities</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="filter-group wds-field">
+                        <label class="wds-label" for="filter-type">Type</label>
+                        <select class="wds-select" id="filter-type">
+                            <option value="">All Types</option>
+                            <option value="epic">Epic</option>
+                            <option value="story">Story</option>
+                            <option value="task">Task</option>
+                        </select>
+                    </div>
+                    <div class="filter-group wds-field">
+                        <label class="wds-label" for="filter-overdue">Due</label>
+                        <select class="wds-select" id="filter-overdue">
+                            <option value="">All Tasks</option>
+                            <option value="overdue">Overdue Only</option>
+                            <option value="due-soon">Due Soon</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button id="clear-filters-btn" class="wds-btn wds-btn--secondary wds-btn--sm" type="button">Clear all</button>
+                        <button id="save-filter-btn" class="wds-btn wds-btn--primary wds-btn--sm" type="button">Save filter</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="kanban-view" class="task-board">
+            <div class="column" data-status="todo">
+                <h3>To Do</h3>
+                <div class="task-list" id="todo-tasks"></div>
+            </div>
+
+            <div class="column" data-status="in_progress">
+                <h3>In Progress</h3>
+                <div class="task-list" id="in-progress-tasks"></div>
+            </div>
+
+            <div class="column" data-status="done">
+                <h3>Done</h3>
+                <div class="task-list" id="done-tasks"></div>
+            </div>
+
+            <div class="column" data-status="blocked">
+                <h3>Blocked</h3>
+                <div class="task-list" id="blocked-tasks"></div>
+            </div>
+        </div>
+
+        <!-- Hierarchy View (initially hidden) -->
+        <div id="hierarchy-view" class="hierarchy-view" style="display: none;">
+            <div class="hierarchy-container">
+                <!-- Hierarchy content will be loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- Timeline View (initially hidden) -->
+        <div id="timeline-view" class="timeline-view" style="display: none;">
+            <div class="timeline-header">
+                <h3>Project Timeline</h3>
+                <div class="timeline-controls">
+                    <select id="timeline-mode" class="wds-select">
+                        <option value="due">Due Dates</option>
+                        <option value="start">Start Dates</option>
+                    </select>
+                    <button id="timeline-today-btn" class="wds-btn wds-btn--secondary" type="button">Today</button>
+                    <select id="timeline-range" class="wds-select">
+                        <option value="30">30 Days</option>
+                        <option value="60" selected>60 Days</option>
+                        <option value="90">90 Days</option>
+                    </select>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <!-- Timeline content will be loaded dynamically -->
+            </div>
+        </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <wds-modal id="task-detail-modal" size="lg">
+        <span id="detail-modal-title" slot="header">Task details</span>
+        <wds-resource-panel
+            id="task-detail-panel"
+            heading="Loading task"
+            subheading="Project task"
+            status="Loading"
+            status-variant="neutral"
+            delete-confirm-title="Delete this task?"
+            delete-confirm-message="This task and its relationships will be permanently removed. This action cannot be undone.">
+            <div class="task-detail-content">
+                <div class="detail-section">
+                    <h3 id="detail-task-title"></h3>
+                    <p id="detail-task-description"></p>
+                </div>
+                <dl class="wds-detail-list detail-meta">
+                    <div class="wds-detail-row detail-row">
+                        <dt>Type</dt>
+                        <dd><span id="detail-task-type" class="wds-badge wds-badge--neutral"></span></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row">
+                        <dt>Status</dt>
+                        <dd><span id="detail-task-status" class="wds-badge wds-badge--neutral"></span></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row">
+                        <dt>Priority</dt>
+                        <dd><span id="detail-task-priority" class="wds-badge wds-badge--neutral"></span></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row" id="detail-due-date-row" style="display: none;">
+                        <dt>Due date</dt>
+                        <dd id="detail-task-due-date"></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row" id="detail-started-at-row" style="display: none;">
+                        <dt>Started</dt>
+                        <dd id="detail-task-started-at"></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row">
+                        <dt>Created</dt>
+                        <dd id="detail-task-created-at"></dd>
+                    </div>
+                    <div class="wds-detail-row detail-row" id="detail-children-row" style="display: none;">
+                        <dt>Children</dt>
+                        <dd id="detail-task-children"></dd>
+                    </div>
+                </dl>
+            </div>
+            <span slot="footer">Created in ProjectFlow</span>
+        </wds-resource-panel>
+    </wds-modal>
+
+    <!-- Task Modal -->
+    <div id="task-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">New Task</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-help-section">
+                <p class="help-text"><strong>Keep it actionable.</strong> Use clear titles and break larger work into smaller tasks.</p>
+                <a href="#" class="help-link" onclick="ProjectFlowHelp.openDoc('user-guide'); return false;">
+                    <wds-icon name="external-link" size="14"></wds-icon>
+                    Task management guide
+                </a>
+            </div>
+            <form id="task-form">
+                <div class="form-group wds-field">
+                    <label class="wds-label wds-label--required" for="task-title">Title</label>
+                    <input class="wds-input" type="text" id="task-title" name="title" required placeholder="What needs to be done?">
+                </div>
+                <div class="form-group wds-field">
+                    <label class="wds-label" for="task-description">Description</label>
+                    <textarea class="wds-textarea" id="task-description" name="description" rows="3" placeholder="Add context, outcome, or acceptance criteria"></textarea>
+                </div>
+                <div class="form-group wds-field">
+                    <label class="wds-label" for="task-due-date">Due date</label>
+                    <input class="wds-input" type="date" id="task-due-date" name="due_date">
+                </div>
+                <div class="form-group wds-field">
+                    <label class="wds-label" for="task-started-at">Start date</label>
+                    <input class="wds-input" type="datetime-local" id="task-started-at" name="started_at">
+                    <small class="form-text wds-hint">Set automatically when the task moves to In Progress.</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group wds-field">
+                        <label class="wds-label" for="task-type">
+                            Type
+                        </label>
+                        <select class="wds-select" id="task-type" name="type">
+                            <option value="epic">Epic</option>
+                            <option value="story">Story</option>
+                            <option value="task" selected>Task</option>
+                        </select>
+                        <small class="form-text wds-hint">Hierarchy: Epic → Story → Task</small>
+                    </div>
+                    <div class="form-group wds-field">
+                        <label class="wds-label" for="task-priority">
+                            Priority
+                        </label>
+                        <select class="wds-select" id="task-priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                        <small class="form-text wds-hint">How urgently this work should be handled.</small>
+                    </div>
+                </div>
+                <div class="form-group wds-field" id="task-parent-group">
+                    <label class="wds-label" for="task-parent-id">Parent</label>
+                    <select class="wds-select" id="task-parent-id" name="parent_id">
+                        <option value="">No parent</option>
+                    </select>
+                    <small class="form-text wds-hint" id="task-parent-hint"></small>
+                </div>
+                <div class="form-group wds-field">
+                    <label class="wds-label" for="task-status">
+                        Status
+                    </label>
+                    <select class="wds-select" id="task-status" name="status">
+                        <option value="todo" selected>To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="blocked">Blocked</option>
+                    </select>
+                    <small class="form-text wds-hint">Tasks flow from To Do → In Progress → Done.</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="wds-btn wds-btn--secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="wds-btn wds-btn--primary" id="save-btn">Save task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Project Management Modal -->
+    <div id="project-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="project-modal-title">Project Management</h2>
+                <span class="close project-modal-close">&times;</span>
+            </div>
+            <div class="modal-help-section">
+                <p class="help-text"><strong>Start with one clear outcome.</strong> Projects group the tasks, milestones, and AI-assisted work for a shared goal.</p>
+                <a href="#" class="help-link" onclick="ProjectFlowHelp.openDoc('user-guide'); return false;">
+                    <wds-icon name="external-link" size="14"></wds-icon>
+                    Project planning guide
+                </a>
+            </div>
+            <div class="modal-body">
+                <div class="tab-container">
+                    <div class="tab-nav">
+                        <button class="tab-btn active" data-tab="create-project">Create Project</button>
+                        <button class="tab-btn" data-tab="manage-projects">Manage Projects</button>
+                    </div>
+                    
+                    <!-- Create Project Tab -->
+                    <div id="create-project-tab" class="tab-content active">
+                        <form id="project-form">
+                            <div class="form-group wds-field">
+                                <label class="wds-label wds-label--required" for="project-name">Project name</label>
+                                <input class="wds-input" type="text" id="project-name" name="name" required
+                                       placeholder="e.g. Product launch">
+                                <div class="form-error wds-error-text" id="project-name-error"></div>
+                            </div>
+                            <div class="form-group wds-field">
+                                <label class="wds-label" for="project-description">Description</label>
+                                <textarea class="wds-textarea" id="project-description" name="description" rows="3"
+                                          placeholder="What outcome are you working toward?"></textarea>
+                            </div>
+                            <div class="form-group wds-field">
+                                <label class="wds-label wds-label--required" for="project-prefix">Task ID prefix</label>
+                                <input class="wds-input" type="text" id="project-prefix" name="display_prefix" required
+                                       placeholder="e.g., LAUNCH" maxlength="5">
+                                <small class="form-text wds-hint">Suggested automatically; used in task IDs such as LAUNCH-12.</small>
+                                <div class="form-error wds-error-text" id="project-prefix-error"></div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="wds-btn wds-btn--secondary" id="project-cancel-btn">Cancel</button>
+                                <button type="submit" class="wds-btn wds-btn--primary" id="project-save-btn">
+                                    <span class="btn-text">Create Project</span>
+                                    <span class="btn-loading" style="display: none;">Creating...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Manage Projects Tab -->
+                    <div id="manage-projects-tab" class="tab-content">
+                        <div class="project-search">
+                            <input class="wds-input" type="text" id="project-search-input" placeholder="Search projects...">
+                        </div>
+                        <div id="project-list-container" class="project-list-container">
+                            <!-- Project list will be populated here -->
+                        </div>
+                        <div class="manage-actions">
+                            <button class="wds-btn wds-btn--secondary wds-btn--sm" id="refresh-projects-btn" type="button">
+                                <wds-icon name="refresh" size="14"></wds-icon>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Success/Error Messages -->
+                <div id="project-message" class="message" style="display: none;">
+                    <span id="project-message-text"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Delete Confirmation Modal -->
+    <div id="project-delete-modal" class="modal" style="display: none;">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <span class="close project-delete-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the project "<strong id="delete-project-name"></strong>"?</p>
+                <p class="warning">This action cannot be undone. All tasks in this project will be permanently deleted.</p>
+                <div class="confirm-actions">
+                    <button class="wds-btn wds-btn--secondary" id="confirm-cancel-btn">Cancel</button>
+                    <button class="wds-btn wds-btn--danger" id="confirm-delete-btn">
+                        <span class="btn-text">Delete Project</span>
+                        <span class="btn-loading" style="display: none;">Deleting...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation Modal -->
+    <div id="docs-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>
+                    <span class="icon">📚</span>
+                    Documentation & Help
+                </h2>
+                <span class="close docs-modal-close">&times;</span>
+            </div>
+            <div class="modal-body docs-modal-body">
+                <div class="docs-container">
+                    <!-- Documentation Navigation -->
+                    <div class="docs-nav">
+                        <div class="docs-nav-header">
+                            <h3>📋 Topics</h3>
+                            <div class="docs-search">
+                                <input type="text" id="docs-search" placeholder="Search documentation..." />
+                                <span class="search-icon">🔍</span>
+                            </div>
+                        </div>
+                        <div id="docs-nav-list" class="docs-nav-list">
+                            <!-- Navigation will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Documentation Content -->
+                    <div class="docs-content">
+                        <div id="docs-loading" class="docs-loading" style="display: none;">
+                            <div class="loading-spinner"></div>
+                            <p>Loading documentation...</p>
+                        </div>
+                        <div id="docs-content-area" class="docs-content-area">
+                            <!-- Documentation content will be rendered here -->
+                            <div class="docs-welcome">
+                                <h1>📚 Welcome to ProjectFlow Documentation</h1>
+                                <p>Select a topic from the navigation menu to get started.</p>
+                                <div class="docs-quick-links">
+                                    <h3>🚀 Quick Start</h3>
+                                    <ul>
+                                        <li><a href="#" data-doc="user-guide">User Guide</a></li>
+                                        <li><a href="#" data-doc="chat-interface-guide">Chat Interface Guide</a></li>
+                                        <li><a href="#" data-doc="mcp">Model Context Protocol (MCP)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/js/app.js?v=5"></script>
+</body>
+</html>

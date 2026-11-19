@@ -1,0 +1,166 @@
+/* Hierarchy View Styles */
+.hierarchy-view {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: 18px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: 30px;
+}
+
+.hierarchy-container {
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.hierarchy-item {
+    margin-bottom: 6px;
+    border-left: 2px solid var(--border-color);
+    padding-left: 12px;
+    transition: var(--transition);
+}
+
+.hierarchy-item:hover {
+    border-left-color: var(--accent-primary);
+}
+
+.hierarchy-task {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.hierarchy-task:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-primary);
+    transform: translateX(3px);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.clickable-task {
+    cursor: pointer;
+    outline: none;
+}
+
+.clickable-task:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
+}
+
+.clickable-task:active {
+    transform: translateX(1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Visual indicator for clickable tasks */
+.clickable-task .task-title::after {
+    content: ' 👁️';
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 0.8em;
+}
+
+.clickable-task:hover .task-title::after {
+    opacity: 0.7;
+}
+
+/* Enhanced hover effects for better UX */
+.hierarchy-task:hover .task-title {
+    color: var(--accent-primary);
+}
+
+.hierarchy-task:hover .task-type {
+    transform: scale(1.05);
+}
+
+.hierarchy-toggle {
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--text-secondary);
+    user-select: none;
+    width: 12px;
+    text-align: center;
+}
+
+.hierarchy-spacer {
+    width: 12px;
+}
+
+.hierarchy-task .task-type {
+    min-width: 60px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.hierarchy-task .task-title {
+    flex: 1;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.hierarchy-task .task-status {
+    padding: 3px 9px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-todo {
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--text-secondary);
+}
+
+.status-in_progress {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-color);
+}
+
+.status-review {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-primary);
+}
+
+.status-done {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.status-blocked {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-color);
+}
+
+.hierarchy-children {
+    margin-top: 6px;
+    margin-left: 15px;
+}
+
+/* Loading state for hierarchy */
+.hierarchy-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.hierarchy-loading::before {
+    content: '⏳';
+    margin-right: 6px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
